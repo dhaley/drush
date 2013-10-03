@@ -1,0 +1,3 @@
+[submodule "lib/Console_Table-1.1.3"]
+	path = lib/Console_Table-1.1.3
+	url = git@github.com:dhaley/Console_Table.git
