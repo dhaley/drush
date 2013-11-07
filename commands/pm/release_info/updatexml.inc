@@ -450,12 +450,16 @@ function updatexml_best_release_found($releases) {
   return (array)$releases[0];
 }
 
+function updatexml_get_url($request) {
+  $status_url = isset($request['status url']) ? $request['status url'] : RELEASE_INFO_DEFAULT_URL;
+  return $status_url . '/' . $request['name'] . '/' . $request['drupal_version'];
+}
+
 /**
  * Download the release history xml for the specified request.
  */
 function updatexml_get_release_history_xml($request) {
-  $status_url = isset($request['status url'])?$request['status url']:RELEASE_INFO_DEFAULT_URL;
-  $url =  $status_url . '/' . $request['name'] . '/' . $request['drupal_version'];
+  $url =  updatexml_get_url($request);
   drush_log('Downloading release history from ' . $url);
   // Some hosts have allow_url_fopen disabled.
   if ($path = drush_download_file($url, drush_tempnam($request['name']), drush_get_option('cache-duration-releasexml', 24*3600))) {
@@ -574,22 +578,18 @@ function updatexml_get_releases_from_xml($xml, $project) {
  */
 function updatexml_determine_project_type($xml) {
   $project_types = array(
-    'core' => 'Drupal core',
-    'profile' => 'Distributions',
-    'profile-legacy' => 'Installation profiles',
-    'module' => 'Modules',
-    'theme' => 'Themes',
-    'theme engine' => 'Theme engines',
-    'translation' => 'Translations'
+    'core' => 'project_core',
+    'profile' => 'project_distribution',
+    'module' => 'project_module',
+    'theme' => 'project_theme',
+    'theme engine' => 'project_theme_engine',
+    'translation' => 'project_translation'
   );
 
-  $project_types_xpath = '(value="' . implode('" or value="', $project_types) . '")';
-  $type = 'module';
-  if ($types = $xml->xpath('/project/terms/term[name="Projects" and ' . $project_types_xpath . ']')) {
-    $type = array_search($types[0]->value, $project_types);
-    $type = ($type == 'profile-legacy') ? 'profile' : $type;
-  }
-
+  $type = (string)$xml->type;
+  // Probably unused but kept for possible legacy compat.
+  $type = ($type == 'profile-legacy') ? 'profile' : $type;
+  $type = array_search($type, $project_types);
   return $type;
 }
 
