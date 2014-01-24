@@ -223,7 +223,7 @@ function pm_drush_command() {
       'pipe-format' => 'list',
       'field-labels' => array('name' => 'Short Name', 'label' => 'Name', 'existing_version' => 'Installed Version', 'status' => 'Status', 'status_msg' => 'Message', 'candidate_version' => 'Proposed version'),
       'fields-default' => array('label', 'existing_version', 'candidate_version', 'status_msg' ),
-      'fields-pipe' => array('name', 'existing_version', 'candidate_version', 'status_msg' ),
+      'fields-pipe' => array('name', 'existing_version', 'candidate_version', 'status_msg'),
       'output-data-type' => 'format-table',
     ),
     'aliases' => array('ups'),
@@ -1780,7 +1780,9 @@ function drush_pm_inject_info_file_metadata($project_dir, $project_name, $versio
     if (preg_match('/^((\d+)\.x)-.*/', $version, $matches) && $matches[2] >= 6) {
       $info .= "core = \"$matches[1]\"\n";
     }
-    $info .= "project = \"$project_name\"\n";
+    if (!drush_get_option('no-gitprojectinfo', FALSE)) {
+      $info .= "project = \"$project_name\"\n";
+    }
     $info .= 'datestamp = "'. time() ."\"\n";
     $info .= "\n";
     foreach ($info_files as $info_file) {

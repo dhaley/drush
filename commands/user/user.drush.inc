@@ -19,7 +19,6 @@ function user_drush_help($section) {
  */
 function user_drush_command() {
   $items['user-information'] = array(
-    'callback' => 'drush_user_information',
     'description' => 'Print information about the specified user(s).',
     'aliases' => array('uinf'),
     'examples' => array(
@@ -65,7 +64,6 @@ function user_drush_command() {
     ),
   );
   $items['user-block'] = array(
-    'callback' => 'drush_user_block',
     'description' => 'Block the specified user(s).',
     'aliases' => array('ublk'),
     'arguments' => array(
@@ -83,7 +81,6 @@ function user_drush_command() {
     ),
   );
   $items['user-unblock'] = array(
-    'callback' => 'drush_user_unblock',
     'description' => 'Unblock the specified user(s).',
     'aliases' => array('uublk'),
     'arguments' => array(
@@ -101,7 +98,6 @@ function user_drush_command() {
     ),
   );
   $items['user-add-role'] = array(
-    'callback' => 'drush_user_add_role',
     'description' => 'Add a role to the specified user accounts.',
     'aliases' => array('urol'),
     'arguments' => array(
@@ -120,7 +116,6 @@ function user_drush_command() {
     ),
   );
   $items['user-remove-role'] = array(
-    'callback' => 'drush_user_remove_role',
     'description' => 'Remove a role from the specified user accounts.',
     'aliases' => array('urrol'),
     'arguments' => array(
@@ -139,7 +134,6 @@ function user_drush_command() {
     ),
   );
   $items['user-create'] = array(
-    'callback' => 'drush_user_create',
     'description' => 'Create a user account with the specified name.',
     'aliases' => array('ucrt'),
     'arguments' => array(
@@ -156,7 +150,6 @@ function user_drush_command() {
     ),
   );
   $items['user-cancel'] = array(
-    'callback' => 'drush_user_cancel',
     'description' => 'Cancel a user account with the specified name.',
     'aliases' => array('ucan'),
     'arguments' => array(
@@ -169,7 +162,6 @@ function user_drush_command() {
     ),
   );
   $items['user-password'] = array(
-    'callback' => 'drush_user_password',
     'description' => '(Re)Set the password for the user account with the specified name.',
     'aliases' => array('upwd'),
     'arguments' => array(
@@ -189,7 +181,6 @@ function user_drush_command() {
     ),
   );
   $items['user-login'] = array(
-    'callback' => 'drush_user_login',
     'description' => 'Display a one time login link for the given user account (defaults to uid 1).',
     'aliases' => array('uli'),
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
@@ -270,22 +261,18 @@ function drush_user_unblock($users = '') {
  */
 function drush_user_add_role($role, $users = '') {
   $uids = _drush_user_get_users_from_options_and_arguments($users);
-  if (drush_drupal_major_version() >= 7) {
-    $rid_query = db_query("SELECT rid FROM {role} WHERE name = :role", array(':role' => $role));
+
+  try {
+    $role_object = drush_role_get_class($role);
+  } catch (Exception $e) {
+    return drush_set_error($e->getMessage());
   }
-  else {
-    $rid_query = db_query("SELECT rid FROM {role} WHERE name = '%s'", $role);
-  }
+
   if (!empty($uids)) {
-    if ($rid = drush_db_result($rid_query)) {
-      drush_include_engine('drupal', 'user', drush_drupal_major_version());
-      drush_op('_drush_add_role', $uids, $rid);
-      foreach($uids as $uid) {
-        drush_log(dt("Added the !role role to uid !uid", array('!role' => $role, '!uid' => $uid)), 'success');
-      }
-    }
-    else {
-      return drush_set_error(dt("There is no role named: !role", array('!role' => $role)));
+    drush_include_engine('drupal', 'user', drush_drupal_major_version());
+    drush_op('_drush_user_add_role', $uids, $role_object->rid);
+    foreach($uids as $uid) {
+      drush_log(dt("Added the !role role to uid !uid", array('!role' => $role, '!uid' => $uid)), 'success');
     }
   }
   else {
@@ -298,22 +285,17 @@ function drush_user_add_role($role, $users = '') {
  */
 function drush_user_remove_role($role, $users = '') {
   $uids = _drush_user_get_users_from_options_and_arguments($users);
-  if (drush_drupal_major_version() >= 7) {
-    $rid_query = db_query("SELECT rid FROM {role} WHERE name = :role", array(':role' => $role));
+  try {
+    $role_object = drush_role_get_class($role);
+  } catch (Exception $e) {
+    return drush_set_error($e->getMessage());
   }
-  else {
-    $rid_query = db_query("SELECT rid FROM {role} WHERE name = '%s'", $role);
-  }
+
   if (!empty($uids)) {
-    if ($rid = drush_db_result($rid_query)) {
-      drush_include_engine('drupal', 'user', drush_drupal_major_version());
-      drush_op('_drush_remove_role', $uids, $rid);
-      foreach($uids as $uid) {
-        drush_log(dt("Removed the !role role from uid !uid", array('!role' => $role, '!uid' => $uid)), 'success');
-      }
-    }
-    else {
-      return drush_set_error(dt("There is no role named: !role", array('!role' => $role)));
+    drush_include_engine('drupal', 'user', drush_drupal_major_version());
+    drush_op('_drush_user_remove_role', $uids, $role_object->rid);
+    foreach($uids as $uid) {
+      drush_log(dt("Removed the !role role from uid !uid", array('!role' => $role, '!uid' => $uid)), 'success');
     }
   }
   else {
@@ -436,21 +418,10 @@ function drush_user_login($user = NULL, $path = NULL) {
   $user_object = $uid = FALSE;
   $args = func_get_args();
 
-  // Determine whether redispatch is needed. We want to start a browser on *local*
-  // machine when this command was called aginst a remote-host.
-  $redispatch = FALSE;
-  if ($alias = drush_get_context('DRUSH_TARGET_SITE_ALIAS')) {
-    if ($site_record = drush_sitealias_get_record($alias)) {
-      if (!empty($site_record['remote-host'])) {
-        $redispatch = TRUE;
-      }
-    }
-    else {
-      drush_set_error('Unrecognized site alias.');
-    }
-  }
-
-  if ($redispatch) {
+  // Redispatch if called against a remote-host so a browser is started on the
+  // the *local* machine.
+  $alias = drush_get_context('DRUSH_TARGET_SITE_ALIAS');
+  if (drush_sitealias_is_remote_site($alias)) {
     $return = drush_invoke_process($site_record, 'user-login', $args, drush_redispatch_get_options(), array('integrate' => FALSE));
     if ($return['error_status']) {
       return drush_set_error('Unable to execute user login.');
@@ -522,7 +493,7 @@ function _drush_user_print_info($account) {
 function _drush_user_get_users_from_arguments($users) {
   $uids = array();
   if ($users !== '') {
-    $users = explode(',', $users);
+    $users = _convert_csv_to_array($users);
     foreach($users as $user) {
       $uid = _drush_user_get_uid($user);
       if ($uid !== FALSE) {

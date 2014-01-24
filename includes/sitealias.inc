@@ -374,7 +374,16 @@ function drush_sitealias_local_site_path($alias_record) {
 
   if (isset($alias_record['root']) && !isset($alias_record['remote-host'])) {
     if (isset($alias_record['uri'])) {
-      $result = ($alias_record['root'] . '/sites/' . drush_sitealias_uri_to_site_dir($alias_record['uri']));
+      if (file_exists($alias_record['root'] . '/sites/sites.php')) {
+        $sites = array();
+        include($alias_record['root'] . '/sites/sites.php');
+        if (array_key_exists($alias_record['uri'], $sites)) {
+          $result = $alias_record['root'] . '/sites/' . $sites[$alias_record['uri']];
+        }
+      }
+      if (!$result) {
+        $result = ($alias_record['root'] . '/sites/' . drush_sitealias_uri_to_site_dir($alias_record['uri']));
+      }
       $result = realpath($result);
     }
     if (!$result) {
@@ -918,6 +927,33 @@ function drush_sitealias_is_bootstrapped_site($alias_record) {
       return TRUE;
     }
   }
+  return FALSE;
+}
+
+/**
+ * Determines whether a given site alias is for a remote site.
+ *
+ * @param string $alias
+ *   An alias name or site specification.
+ *
+ * @return bool
+ *   Returns TRUE if the alias refer to a remote site, or FALSE if it does not.
+ */
+function drush_sitealias_is_remote_site($alias) {
+  if (!is_string($alias) || !strlen($alias)) {
+    return FALSE;
+  }
+
+  $site_record = drush_sitealias_get_record($alias);
+  if ($site_record) {
+    if (!empty($site_record['remote-host'])) {
+      return TRUE;
+    }
+  }
+  else {
+    drush_set_error('Unrecognized site alias.');
+  }
+
   return FALSE;
 }
 

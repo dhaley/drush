@@ -922,7 +922,10 @@ function _drush_bootstrap_drupal_database_validate() {
  */
 function _drush_bootstrap_drupal_database() {
   drush_log(dt("Successfully connected to the Drupal database."), 'bootstrap');
-  drupal_bootstrap(DRUPAL_BOOTSTRAP_DATABASE);
+  // D8 omits this bootstrap level as nothing special needs to be done.
+  if (drush_drupal_major_version() <= 7) {
+    drupal_bootstrap(DRUPAL_BOOTSTRAP_DATABASE);
+  }
 }
 
 /**
@@ -1034,9 +1037,9 @@ function drush_bootstrap_prepare() {
   // PHP_VERSION, such as runserver/runserver.drush.inc, and also
   // adjust _drush_environment_check_php_ini() and the php_prohibited_options
   // list in the drush script.  See http://drupal.org/node/1748228
-  define('DRUSH_MINIMUM_PHP', '5.3.3');
+  define('DRUSH_MINIMUM_PHP', '5.3.0');
   if (version_compare(phpversion(), DRUSH_MINIMUM_PHP) < 0 && !getenv('DRUSH_NO_MIN_PHP')) {
-    return drush_set_error('DRUSH_REQUIREMENTS_ERROR', dt('Your command line PHP installation is too old. Drush requires at least PHP !version.', array('!version' => DRUSH_MINIMUM_PHP)));
+    return drush_set_error('DRUSH_REQUIREMENTS_ERROR', dt('Your command line PHP installation is too old. Drush requires at least PHP !version. To suppress this check, set the environment variable DRUSH_NO_MIN_PHP=1', array('!version' => DRUSH_MINIMUM_PHP)));
   }
 
   $drush_info = drush_read_drush_info();
@@ -1127,15 +1130,7 @@ function drush_shutdown() {
     }
   }
 
-  /**
-   * For now, drush skips end of page processing on D7. Doing so could write
-   * cache entries to module_implements and lookup_cache that don't match web requests.
-   */
-  // if (drush_drupal_major_version() >= 7 && function_exists('drupal_page_footer')) {
-    // drupal_page_footer();
-  // }
-
-  // this way drush_return_status will always be the last shutdown function (unless other shutdown functions register shutdown functions...)
+  // This way drush_return_status() will always be the last shutdown function (unless other shutdown functions register shutdown functions...)
   // and won't prevent other registered shutdown functions (IE from numerous cron methods) from running by calling exit() before they get a chance.
   register_shutdown_function('drush_return_status');
 }

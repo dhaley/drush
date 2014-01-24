@@ -290,7 +290,7 @@ function core_drush_command() {
       ),
     ),
     'examples' => array(
-      'drush site-install expert --locale=uk' => '(Re)install using the expert install profile. Set default language to Ukranian.',
+      'drush site-install expert --locale=uk' => '(Re)install using the expert install profile. Set default language to Ukrainian.',
       'drush site-install --db-url=mysql://root:pass@localhost:port/dbname' => 'Install using the specified DB params.',
       'drush site-install --db-url=sqlite://sites/example.com/files/.ht.sqlite' => 'Install using SQLite (D7+ only).',
       'drush site-install --account-name=joe --account-pass=mom' => 'Re-install with specified uid1 credentials.',
@@ -425,13 +425,16 @@ function core_drush_engine_type_info() {
  * Implements hook_drush_engine_ENGINE_TYPE().
  */
 function core_drush_engine_drupal() {
-  $engines = array();
-  $engines['batch'] = array();
-  $engines['update'] = array();
-  $engines['environment'] = array();
-  $engines['site_install'] = array();
-  $engines['user'] = array();
-  $engines['pm'] = array();
+  $engines = array(
+    'batch' => array(),
+    'update'=> array(),
+    'environment' => array(),
+    'site_install' => array(),
+    'user' => array(),
+    'pm' => array(),
+    'cache' => array(),
+    'image' => array(),
+  );
   return $engines;
 }
 
@@ -536,6 +539,7 @@ function _core_site_credential_table($status_table) {
 
 function _core_path_aliases($project = '') {
   $paths = array();
+  $site_wide = drush_drupal_sitewide_directory();
   if ($drupal_root = drush_get_context('DRUSH_DRUPAL_ROOT')) {
     $paths['%root'] = $drupal_root;
     if ($site_root = drush_get_context('DRUSH_DRUPAL_SITE_ROOT')) {
@@ -544,13 +548,13 @@ function _core_path_aliases($project = '') {
         $paths['%modules'] = $modules_path;
       }
       else {
-        $paths['%modules'] = 'sites/all/modules';
+        $paths['%modules'] = ltrim($site_wide . '/modules', '/');
       }
       if (is_dir($themes_path = conf_path() . '/themes')) {
         $paths['%themes'] = $themes_path;
       }
       else {
-        $paths['%themes'] = 'sites/all/themes';
+        $paths['%themes'] = ltrim($site_wide . '/themes', '/');
       }
       if (drush_drupal_major_version() >= 8 && drush_get_context('DRUSH_BOOTSTRAP_PHASE') >= DRUSH_BOOTSTRAP_DRUPAL_CONFIGURATION) {
         try {
@@ -581,10 +585,10 @@ function _core_path_aliases($project = '') {
       // for a project (or a few) and add its path to the path list
       if (!empty($project)) {
         drush_include_engine('drupal', 'environment');
-        $modules = drush_get_modules();
+        $projects = array_merge(drush_get_modules(), drush_get_themes());
         foreach(explode(',', $project) as $target) {
-          if (array_key_exists($target, $modules)) {
-            $paths['%' . $target] = DRUPAL_ROOT . '/' . dirname($modules[$target]->filename);
+          if (array_key_exists($target, $projects)) {
+            $paths['%' . $target] = $drupal_root . '/' . dirname($projects[$target]->filename);
           }
         }
       }

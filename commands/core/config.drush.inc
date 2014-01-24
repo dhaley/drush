@@ -35,13 +35,13 @@ function config_drush_command() {
     'required-arguments' => 1,
     'options' => array(
       'source' => array(
-        'description' => 'The config storage source to read. Use "database" for database storage, or "file" for file stroage',
-        'example-value' => 'database',
+        'description' => 'The config storage source to read. recognized values are \'active \'and \'staging\'.',
+        'example-value' => 'active',
         'value' => 'required',
       ),
     ),
     'examples' => array(
-      'drush config-view system.site' => 'Displays the system.site config.',
+      'drush config-get system.site' => 'Displays the system.site config.',
       'drush config-get system.site page.front' => 'gets system.site:page.front value.',
     ),
     'outputformat' => array(
@@ -53,7 +53,7 @@ function config_drush_command() {
   );
 
   $items['config-set'] = array(
-    'description' => 'Set config value in the active store. This does not invoke config_sync_changes().',
+    'description' => 'Set config value directly in active configuration.',
     'arguments' => array(
       'config-name' => 'The config object name, for example "system.site".',
       'key' => 'The config key, for example "page.front".',
@@ -76,6 +76,15 @@ function config_drush_command() {
     ),
     'aliases' => array('cset'),
     'core' => array('8+'),
+  );
+
+  $items['config-export'] = array(
+    'description' => 'Export config from the active directory to staging directory.',
+    'core' => array('8+'),
+    'aliases' => array('cex'),
+    'options' => array(
+      'add' => 'Run `git add -p` after exporting. This lets you choose which config changes to stage for commit.',
+    ),
   );
 
   $items['config-import'] = array(
@@ -109,7 +118,7 @@ function config_drush_command() {
   );
 
   $items['config-edit'] = array(
-    'description' => 'Open a config file in a text editor. Edits are imported into Drupal after closing editor.',
+    'description' => 'Open a config file in a text editor. Edits are imported into active configration after closing editor.',
     'core' => array('8+'),
     'aliases' => array('cedit'),
     'arguments' => array(
@@ -236,6 +245,34 @@ function drush_config_set($config_name, $key = NULL, $data = NULL) {
 }
 
 /**
+ * Command callback: Export config to staging directory.
+ */
+function drush_config_export() {
+  // Retrieve a list of differences between the active and staged configuration.
+  $active_dir = config_get_config_directory(CONFIG_ACTIVE_DIRECTORY);
+  $staging_dir = config_get_config_directory(CONFIG_STAGING_DIRECTORY);
+
+  if (count(glob($staging_dir . '/*')) > 0) {
+    if (!drush_confirm(dt('The current contents of your staging directory (!staging) will be deleted.', array('!staging' => $staging_dir)))) {
+      return drush_user_abort();
+    }
+  }
+
+  if (drush_delete_dir_contents($staging_dir, TRUE)) {
+    // We specify the MERGE flag below in order to copy only contents, not the dir itself. Since
+    // The dir is empty, it is effectively a copy, not a merge.
+    drush_copy_dir($active_dir, $staging_dir, FILE_EXISTS_MERGE);
+  }
+  else {
+    return drush_set_error('DRUSH_CONFIG_EXPORT_DELETE', dt('Failed to empty staging directory.'));
+  }
+
+  if (drush_get_option('add')) {
+    drush_shell_exec_interactive('git add -p %s', $staging_dir);
+  }
+}
+
+/**
  * Command callback. Import from staging directory.
  */
 function drush_config_import() {
@@ -259,7 +296,8 @@ function _drush_config_import(StorageComparer $storage_comparer) {
     Drupal::service('config.factory'),
     Drupal::entityManager(),
     Drupal::lock(),
-    Drupal::service('uuid')
+    Drupal::service('uuid'),
+    Drupal::service('config.typed')
   );
   if ($config_importer->alreadyImporting()) {
     drush_log('Another request may be synchronizing configuration already.', 'warning');
@@ -301,6 +339,7 @@ function drush_config_edit($config_name = '') {
     }
     else {
       $config_name = $config_names[$choice];
+      $config = Drupal::config($config_name);
     }
   }
 
@@ -332,17 +371,17 @@ function drush_config_edit($config_name = '') {
  *   The config object name.
  */
 function drush_config_get_object($config_name) {
-  $source = drush_get_option('source', 'database');
-  if ($source == 'database') {
+  $source = drush_get_option('source', 'active');
+  if ($source == 'active') {
     $config = drupal_container()->get('config.storage');
   }
-  elseif ($source == 'file') {
+  elseif ($source == 'staging') {
     $config = drupal_container()->get('config.storage.staging');
   }
 
   $data = $config->read($config_name);
   if ($data === FALSE) {
-    return drush_set_error(dt('Config !name does not exist in the !source system.', array('!name' => $config_name, '!source' => $source)));
+    return drush_set_error(dt('Config !name does not exist in !source configuration.', array('!name' => $config_name, '!source' => $source)));
   }
   if (empty($data)) {
     drush_log(dt('Config !name exists but has no data.', array('!name' => $config_name)), 'notice');

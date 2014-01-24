@@ -14,7 +14,7 @@ function sql_drush_help($section) {
     case 'meta:sql:summary':
       return dt('Examine and modify your Drupal database.');
     case 'drush:sql-sanitize':
-      return dt('Run sanitization operations on the current database. You can add more sanitization to this command by implementing hook_drush_sql_sanitize().');
+      return dt('Run sanitization operations on the current database. You can add more sanitization to this command by implementing hook_drush_sql_sync_sanitize().');
   }
 }
 
@@ -959,7 +959,7 @@ function _drush_sql_drop($db_spec = NULL) {
       // SQLite only wants one table per DROP TABLE command (so we have to do
       // "DROP TABLE foo; DROP TABLE bar;" instead of "DROP TABLE foo, bar;").
       foreach ($tables as $table) {
-        $sql .= "DROP TABLE {$match};";
+        $sql .= "DROP TABLE $table; ";
       }
       // We can't use drush_op('db_query', $sql) because it will only perform one
       // SQL command and we're technically performing several.
@@ -989,9 +989,6 @@ function drush_sql_cli() {
  * @see hook_drush_sql_sync_sanitize() for adding custom sanitize routines.
  */
 function drush_sql_sanitize() {
-  if (!drush_confirm(dt('Do you really want to sanitize the current database?'))) {
-    return drush_user_abort();
-  }
   drush_sql_bootstrap_further();
   drush_include(DRUSH_BASE_PATH . '/commands/sql', 'sync.sql');
   drush_command_invoke_all('drush_sql_sync_sanitize', 'default');
@@ -1004,6 +1001,9 @@ function drush_sql_sanitize() {
         drush_print($messages);
       }
     }
+  }
+  if (!drush_confirm(dt('Do you really want to sanitize the current database?'))) {
+    return drush_user_abort();
   }
 
   $sanitize_query = '';

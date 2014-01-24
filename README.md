@@ -12,8 +12,8 @@ Each version of Drush supports multiple Drupal versions.  Drush 6 is recommended
 
 Drush Version | Branch  | PHP | Compatible Drupal versions | Code Status
 ------------- | ------  | --- | -------------------------- | -----------
-Drush 7       | [master](https://travis-ci.org/drush-ops/drush)  | 5.3.3+ | D6, D7, D8                 | <img src="https://travis-ci.org/drush-ops/drush.png?branch=master">
-Drush 6       | [6.x](https://travis-ci.org/drush-ops/drush) | 5.3.3+ | D6, D7                     | <img src="https://travis-ci.org/drush-ops/drush.png?branch=6.x">
+Drush 7       | [master](https://travis-ci.org/drush-ops/drush)  | 5.3.0+ | D6, D7, D8                 | <img src="https://travis-ci.org/drush-ops/drush.png?branch=master">
+Drush 6       | [6.x](https://travis-ci.org/drush-ops/drush) | 5.3.0+ | D6, D7                     | <img src="https://travis-ci.org/drush-ops/drush.png?branch=6.x">
 Drush 5       | [5.x](https://travis-ci.org/drush-ops/drush) | 5.2.0+ | D6, D7                     | <img src="https://travis-ci.org/drush-ops/drush.png?branch=5.x">
 Drush 4       | 4.x | 5.2.0+ | D5, D6, D7                 | Unsupported
 Drush 3       | 3.x | 5.2.0+ | D5, D6                     | Unsupported
@@ -62,10 +62,29 @@ MISC
 REQUIREMENTS
 -----------
 
-* To use Drush, you'll need a command line PHP version 5.3.3+.
 * Drush commands that work with git require git 1.7 or greater.
 * Drush works best on a Unix-like OS (Linux, OS X)
 * Most Drush commands run on Windows.  See INSTALLING DRUSH ON WINDOWS, below.
+
+INSTALL - COMPOSER
+------------------
+
+* [Install Composer globally](http://getcomposer.org/doc/00-intro.md#system-requirements) (if needed).
+* Make sure Composer's global bin directory is on the system PATH (recommended):
+
+        echo 'export PATH=$HOME/.composer/vendor/bin:$PATH' >> $HOME/.bashrc
+
+* To install Drush 6.x (stable), run `composer global require drush/drush:6.*`
+
+Some alternate commands in case you want some other variant of Drush:
+
+```bash
+composer global require drush/drush:6.1.0
+# Master branch as a git clone. Great for contributing back to Drush project.
+composer global require drush/drush:dev-master --prefer-source
+```
+
+[Fuller explanation of the require command.](http://getcomposer.org/doc/03-cli.md#require)
 
 INSTALL - PEAR
 -----------
@@ -277,6 +296,14 @@ magic_quotes_gpc = Off
 magic_quotes_runtime = Off
 magic_quotes_sybase = Off
 ```
+
+CONFIGURING DRUSH FOR PHP 5.5
+-----------------------------
+
+If you are running on Linux, you may find that you need
+the php5-json package.  On Ubuntu, you can install it via:
+
+`apt-get install php5-json`
 
 INSTALLING DRUSH ON WINDOWS:
 ----------------------------
