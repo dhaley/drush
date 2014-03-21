@@ -92,16 +92,20 @@ function drush_include($path, $name, $version = NULL, $extension = 'inc') {
  *    retrun drush_get_class('Widget_Class', func_get_args()));
  *  }
  */
-function drush_get_class($class_name, $constructor_args) {
-  $version = drush_drupal_major_version();
-  $version_specific_class_name = $class_name . $version;
-  if (class_exists($version_specific_class_name)) {
-    $reflectionClass = new ReflectionClass($version_specific_class_name);
-    return $reflectionClass->newInstanceArgs($constructor_args);
+
+function drush_get_class($class_name, $constructor_args, $variations = array()) {
+  if (empty($variations)) {
+    $variations[] = drush_drupal_major_version();
   }
-  else {
-    return drush_set_error('DRUSH_GET_CLASS_ERROR', dt('Drupal %d not supported!', $version));
+  for ($i=count($variations); $i > 0; $i--) {
+    $variant_class_name = $class_name . implode('', array_slice($variations, 0, $i));
+    if (class_exists($variant_class_name)) {
+      $reflectionClass = new ReflectionClass($variant_class_name);
+      return $reflectionClass->newInstanceArgs($constructor_args);
+    }
   }
+  // Something bad happenned. Exception?
+  // drush_set_error('DRUSH_GET_CLASS_ERROR', dt('Unable to load class - %s', $class_name));
 }
 
 /**
@@ -265,7 +269,8 @@ function drush_get_global_options($brief = FALSE) {
     $options['interactive']        = array('short-form' => 'ia', 'description' => "Force interactive mode for commands run on multiple targets (e.g. `drush @site1,@site2 cc --ia`).", 'never-propagate' => TRUE);
     $options['tty']                = array('hidden' => TRUE, 'description' => "Force allocation of tty for remote commands", 'never-propagate' => TRUE);
     $options['quiet']               = array('short-form' => 'q', 'description' => 'Suppress non-error messages.');
-    $options['include']             = array('short-form' => 'i', 'short-has-arg' => TRUE, 'context' => 'DRUSH_INCLUDE', 'local-context-only' => TRUE, 'never-post' => TRUE, 'propagate-cli-value' => TRUE, 'merge-pathlist' => TRUE, 'description' => "A list of additional directory paths to search for drush commands.", 'example-value' => '/path/dir');
+    $options['include']             = array('short-form' => 'i', 'short-has-arg' => TRUE, 'context' => 'DRUSH_INCLUDE', 'never-post' => TRUE, 'propagate-cli-value' => TRUE, 'merge-pathlist' => TRUE, 'description' => "A list of additional directory paths to search for drush commands.", 'example-value' => '/path/dir');
+    $options['exclude']             = array('propagate-cli-value' => TRUE, 'never-post' => TRUE, 'merge-pathlist' => TRUE, 'description' => "A list of files and directory paths to exclude from consideration when searching for drush commandfiles.", 'example-value' => '/path/dir');
     $options['config']              = array('short-form' => 'c', 'short-has-arg' => TRUE, 'context' => 'DRUSH_CONFIG', 'local-context-only' => TRUE, 'merge-pathlist' => TRUE, 'description' => "Specify an additional config file to load. See example.drushrc.php.", 'example-value' => '/path/file');
     $options['user']                = array('short-form' => 'u', 'short-has-arg' => TRUE, 'propagate-cli-value' => TRUE, 'description' => "Specify a Drupal user to login with. May be a name or a number.", 'example-value' => 'name_or_number');
     $options['backend']             = array('short-form' => 'b', 'never-propagate' => TRUE, 'description' => "Hide all output and return structured data.");
@@ -594,7 +599,7 @@ function drush_choice_multiple($options, $defaults = FALSE, $prompt = 'Select so
  * @see drush_confirm()
  */
 function drush_prompt($prompt, $default = NULL, $required = TRUE, $password = FALSE) {
-  if (!is_null($default)) {
+  if (isset($default)) {
     $prompt .= " [" . $default . "]";
   }
   $prompt .= ": ";
@@ -1397,8 +1402,11 @@ function drush_do_command_redispatch($command, $args = array(), $remote_host = N
  * @param type
  *   The type of message to be logged. Common types are 'warning', 'error', 'success' and 'notice'.
  *   A type of 'failed' can also be supplied to flag as an 'error'.
- *   A type of 'ok' or 'completed' can also be supplied to flag as a 'success'
- *   All other types of messages will be assumed to be notices.
+ *   A type of 'ok' or 'completed' can also be supplied to flag as a 'success'.
+ *   If you want your log messages to print to screen without the user entering
+ *   a -v or --verbose flag, use type 'ok', this prints log messages out to
+ *   STDERR, which prints to screen (unless you have redirected it). All other
+ *   types of messages will be assumed to be notices.
  */
 function drush_log($message, $type = 'notice', $error = null) {
   $log =& drush_get_context('DRUSH_LOG', array());
@@ -1819,7 +1827,7 @@ function drush_errors_off() {
  * @see drush_errors_off()
  */
 function drush_errors_on($errors = null) {
-  if (is_null($errors)) {
+  if (!isset($errors)) {
     $errors = error_reporting();
   }
   else {

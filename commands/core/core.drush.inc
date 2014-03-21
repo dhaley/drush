@@ -124,7 +124,7 @@ function core_drush_command() {
     'outputformat' => array(
       'default' => 'key-value',
       'pipe-format' => 'json',
-      'field-labels' => array('drupal-version' => 'Drupal version', 'uri' => 'Site URI', 'db-driver' => 'Database driver', 'db-host' => 'Database hostname', 'db-username' => 'Database username', 'db-password' => 'Database password', 'db-name' => 'Database name', 'db-status' => 'Database', 'bootstrap' => 'Drupal bootstrap', 'user' => 'Drupal user', 'theme' => 'Default theme', 'admin-theme' => 'Administration theme', 'php-bin' => 'PHP executable', 'php-conf' => 'PHP configuration', 'php-os' => 'PHP OS', 'drush-version' => 'Drush version', 'drush-conf' => 'Drush configuration', 'drush-alias-files' => 'Drush alias files', 'root' => 'Drupal root', 'site-path' => 'Site path', 'root' => 'Drupal root', 'site' => 'Site path', 'themes' => 'Themes path', 'modules' => 'Modules path', 'files' => 'File directory path', 'private' => 'Private file directory path', 'temp' => 'Temporary file directory path', 'config-active' => 'Active config path', 'config-staging' => 'Staging config path', 'files-path' => 'File directory path', 'temp-path' => 'Temporary file directory path', '%paths' => 'Other paths'),
+      'field-labels' => array('drupal-version' => 'Drupal version', 'uri' => 'Site URI', 'db-driver' => 'Database driver', 'db-host' => 'Database hostname', 'db-username' => 'Database username', 'db-password' => 'Database password', 'db-name' => 'Database name', 'db-status' => 'Database', 'bootstrap' => 'Drupal bootstrap', 'user' => 'Drupal user', 'theme' => 'Default theme', 'admin-theme' => 'Administration theme', 'php-bin' => 'PHP executable', 'php-conf' => 'PHP configuration', 'php-os' => 'PHP OS', 'drush-version' => 'Drush version', 'drush-temp' => 'Drush temp directory', 'drush-conf' => 'Drush configuration', 'drush-alias-files' => 'Drush alias files', 'root' => 'Drupal root', 'site-path' => 'Site path', 'root' => 'Drupal root', 'site' => 'Site path', 'themes' => 'Themes path', 'modules' => 'Modules path', 'files' => 'File directory path', 'private' => 'Private file directory path', 'temp' => 'Temporary file directory path', 'config-active' => 'Active config path', 'config-staging' => 'Staging config path', 'files-path' => 'File directory path', 'temp-path' => 'Temporary file directory path', '%paths' => 'Other paths'),
       'formatted-filter' => '_drush_core_status_format_table_data',
       'private-fields' => 'db-password',
       'simplify-single' => TRUE,
@@ -556,17 +556,17 @@ function _core_site_status_table($project = '') {
     $status_table['drupal-version'] = drush_drupal_version();
     if ($site_root = drush_get_context('DRUSH_DRUPAL_SITE_ROOT')) {
       $status_table['uri'] = drush_get_context('DRUSH_URI');
-      if ($creds = drush_get_context('DRUSH_DB_CREDENTIALS')) {
-        $status_table['db-driver'] = $creds['driver'];
-        if (!empty($creds['unix_socket'])) {
-          $status_table['db-socket'] = $creds['unix_socket'];
+      if ($sql = drush_sql_get_class()) {
+        $status_table['db-driver'] = $sql->db_spec['driver'];
+        if (!empty($sql->db_spec['unix_socket'])) {
+          $status_table['db-socket'] = $sql->db_spec['unix_socket'];
         }
         else {
-          $status_table['db-hostname'] = $creds['host'];
+          $status_table['db-hostname'] = $sql->db_spec['host'];
         }
-        $status_table['db-username'] = $creds['user'];
-        $status_table['db-name'] = $creds['name'];
-        $status_table['db-password'] = $creds['pass'];
+        $status_table['db-username'] = $sql->db_spec['username'];
+        $status_table['db-name'] = $sql->db_spec['database'];
+        $status_table['db-password'] = $sql->db_spec['password'];
         if ($phase > DRUSH_BOOTSTRAP_DRUPAL_DATABASE) {
           $status_table['db-status'] = dt('Connected');
           if ($phase > DRUSH_BOOTSTRAP_DRUPAL_FULL) {
@@ -592,6 +592,7 @@ function _core_site_status_table($project = '') {
     $status_table['php-conf'] = $php_ini_files;
   }
   $status_table['drush-version'] = DRUSH_VERSION;
+  $status_table['drush-temp'] = drush_find_tmp();
   $status_table['drush-conf'] = drush_flatten_array(drush_get_context_options('context-path', ''));
   $alias_files = _drush_sitealias_find_alias_files();
   $status_table['drush-alias-files'] = $alias_files;
@@ -1200,7 +1201,7 @@ function drush_core_execute() {
   $result = TRUE;
   // Get all of the args and options that appear after the command name.
   $args = drush_get_original_cli_args_and_options();
-  for ($x = 0; $x < sizeof($args); $x++) {
+  for ($x = 0; $x < count($args); $x++) {
     // escape all args except for command separators.
     if (!in_array($args[$x], array('&&', '||', ';'))) {
       $args[$x] = drush_escapeshellarg($args[$x]);

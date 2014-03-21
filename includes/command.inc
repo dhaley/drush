@@ -573,7 +573,7 @@ function _drush_verify_cli_options($command) {
   // Next check to see if all required options were specified.
   $missing_required_options = array();
   foreach ($command['options'] as $option_name => $option) {
-    if (is_array($option) && !empty($option['required']) && is_null(drush_get_option($option_name, NULL))) {
+    if (is_array($option) && !empty($option['required']) && drush_get_option($option_name, NULL) === NULL) {
       $missing_required_options[] = $option_name;
     }
   }
@@ -809,7 +809,7 @@ function drush_parse_args() {
   // be either 'help' or 'version' (the later if --version is specified)
   // @todo: it would be handy if one could do `drush @remote st --help` and
   // have that show help for st. Today, that shows --help for help command!
-  if (!sizeof($arguments)) {
+  if (!count($arguments)) {
     if (array_key_exists('version', $options)) {
       $arguments = array('version');
     }
@@ -948,7 +948,7 @@ function drush_adjust_args_if_shebang_script(&$args) {
 function drush_process_bootstrap_to_first_arg(&$arguments) {
   if (drush_get_option('bootstrap-to-first-arg', FALSE)) {
     $shift_alias_pos = 1 + (drush_get_context('DRUSH_SHEBANG_SCRIPT') === TRUE);
-    if (sizeof($arguments) >= $shift_alias_pos) {
+    if (count($arguments) >= $shift_alias_pos) {
       $shifted_alias = $arguments[$shift_alias_pos];
       $alias_record = drush_sitealias_get_record($shifted_alias);
       if (!empty($alias_record)) {
@@ -1174,6 +1174,9 @@ function _drush_command_translate($source) {
  *       of the data items in it.
  * - engines: declares information on Drush engines the command will load.
  *   Available engines can vary by command type.
+ *
+ * @return bool|array
+ *   A command definition.
  */
 function drush_parse_command() {
   $args = drush_get_arguments();
@@ -1328,9 +1331,6 @@ function drush_command_normalize_name($command_name) {
  * - /drush and sites/all/drush in current Drupal site.
  * - Folders belonging to enabled modules in the current Drupal site.
  *
- * Commands implementing hook_drush_load() in MODULE.drush.load.inc with
- * a return value FALSE will not be loaded.
- *
  * A Drush command file is a file that matches "*.drush.inc".
  *
  * @see drush_scan_directory()
@@ -1449,7 +1449,7 @@ function _drush_add_commandfiles($searchpath, $phase = NULL, $reset = FALSE) {
 
   $cache =& drush_get_context('DRUSH_COMMAND_FILES', array());
 
-  if (sizeof($searchpath)) {
+  if (count($searchpath)) {
     if (!$reset) {
       // Assemble a cid specific to the bootstrap phase and searchpaths.
       // Bump $cf_version when making a change to a dev version of Drush
@@ -1514,17 +1514,6 @@ function _drush_add_commandfiles($searchpath, $phase = NULL, $reset = FALSE) {
         if (!empty($drupal_version) && ($drupal_version != drush_drupal_major_version())) {
           $load_command = FALSE;
         }
-        else {
-          $load_test_inc = dirname($filename) . "/" . $module . ".drush.load.inc";
-          if (file_exists($load_test_inc)) {
-            include_once($load_test_inc);
-            $module_versionless = preg_replace('/\.d([0-9]+)$/', '', $module);
-            $load_test_func = $module_versionless . "_drush_load";
-            if (function_exists($load_test_func)) {
-              $load_command = $load_test_func($phase);
-            }
-          }
-        }
         if ($load_command) {
           // Only try to require if the file exists. If not, a file from the
           // command file cache may not be available anymore, in which case
@@ -1550,7 +1539,7 @@ function _drush_add_commandfiles($searchpath, $phase = NULL, $reset = FALSE) {
       }
     }
 
-    if (sizeof($list)) {
+    if (count($list)) {
       ksort($cache);
     }
   }
@@ -1566,6 +1555,7 @@ function drush_filename_blacklist() {
       $blacklist[] = 'drush' . $v;
     }
   }
+  $blacklist = array_merge($blacklist, drush_get_option_list('exclude'));
   return $blacklist;
 }
 

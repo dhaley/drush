@@ -35,7 +35,7 @@ For even more documentation, use the 'topic' command:
 
     $ drush topic
 
-Installation instructions can be found below.  For a full list of Drush commands 
+Installation instructions can be found below.  For a full list of Drush commands
 and documentation by version, visit http://www.drush.org.
 
 
@@ -66,20 +66,30 @@ REQUIREMENTS
 * Drush works best on a Unix-like OS (Linux, OS X)
 * Most Drush commands run on Windows.  See INSTALLING DRUSH ON WINDOWS, below.
 
-INSTALL - COMPOSER
+INSTALL/UPDATE - COMPOSER
 ------------------
 
 * [Install Composer globally](http://getcomposer.org/doc/00-intro.md#system-requirements) (if needed).
 * Make sure Composer's global bin directory is on the system PATH (recommended):
 
         sed -i '1i export PATH="$HOME/.composer/vendor/bin:$PATH"' $HOME/.bashrc
+        source $HOME/.bashrc
 
 * To install Drush 6.x (stable):
 
         composer global require drush/drush:6.*
 
+* To install Drush 7.x (dev) which is required for Drupal 8:
+
+        composer global require drush/drush:dev-master
+
+* To update to a newer version (what you get depends on your specification in ~/.composer/composer.json):
+
+        composer global update
+
 * Alternate commands to install some other variant of Drush:
 
+        # Install a specific version of Drush, e.g. Drush 6.1.0
         composer global require drush/drush:6.1.0
         # Master branch as a git clone. Great for contributing back to Drush project.
         composer global require drush/drush:dev-master --prefer-source
@@ -103,7 +113,7 @@ INSTALL - MANUAL
 -----------
 1. Place the uncompressed drush.tar.gz, drush.zip, or cloned git repository in a directory that is outside of your web root.
 1. Make the 'drush' command executable:
-    
+
     `$ chmod u+x /path/to/drush/drush`
 
 1. Configure your system to recognize where Drush resides. There are 3 options:
@@ -134,7 +144,7 @@ INSTALL - MANUAL
 1. From Drush root, run Composer to fetch dependencies.
 
      `$ composer install`
-     
+
 See the POST-INSTALL section for configuration tips.
 
 POST-INSTALL
@@ -161,7 +171,7 @@ POST-INSTALL
    Putting this in a .bashrc/.bash_profile/.profile would produce this prompt:
 
      `msonnabaum@hostname ~/repos/drush (master)[@sitename]$`
-     
+
 1. Help the Drush development team by sending anonymized usage statistics.  To automatically send usage data, please add the following to a .drushrc.php file:
 
        ```php
@@ -170,9 +180,9 @@ POST-INSTALL
        ```
 
      Stats are usually logged locally and sent whenever log file exceeds 50Kb.
-     Alternatively, one may disable automatic sending and instead use 
+     Alternatively, one may disable automatic sending and instead use
      `usage-show` and `usage-send` commands to more carefully send data.
-     
+
 
 ADDITIONAL CONFIGURATIONS FOR MAMP:
 -----------------------------------
